@@ -2,7 +2,7 @@
 
 var pw = process.env.MONGO_PASS;
 var user = process.env.MONGO_USER;
-var host = process.env.MONGO_HOST;
+var host = process.env.MONGO_HOST || 'localhost';
 
 var mongo = {
     db:       'db',
