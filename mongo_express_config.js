@@ -4,8 +4,6 @@ var pw = process.env.MONGO_PASS;
 var user = process.env.MONGO_USER;
 var host = process.env.MONGO_HOST;
 
-console.log(pw, user);
-
 var mongo = {
     db:       'db',
     host:     host,
