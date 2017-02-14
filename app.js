@@ -1,6 +1,6 @@
 var express = require('express')
 var app = express()
-var mongo_express = require('mongo-express/lib/middleware')
+var mongo_express = require('./mongo-express/lib/middleware')
 var mongo_express_config = require('./mongo_express_config')
 var path = require('path')
 var uuidV4 = require('uuid/v4');

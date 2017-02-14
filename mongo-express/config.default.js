@@ -1,33 +1,47 @@
 'use strict';
 
-var pw = process.env.MONGO_PASS;
-var user = process.env.MONGO_USER;
-var host = process.env.MONGO_HOST || 'localhost';
-var port = process.env.MONGO_PORT || 27017;
-
-console.log(port);
-
-var mongo = {
-    host:     host,
-    password: pw,
-    port:     port,
-    ssl:      true,
-    username: user,
-  };
+var mongo;
 var url = require('url');
+
+if (typeof process.env.MONGODB_PORT === 'string') {
+  var mongoConnection = url.parse(process.env.MONGODB_PORT);
+  process.env.ME_CONFIG_MONGODB_SERVER  = mongoConnection.hostname;
+  process.env.ME_CONFIG_MONGODB_PORT    = mongoConnection.port;
+}
+
+// Accesing Bluemix variable to get MongoDB info
+if (process.env.VCAP_SERVICES) {
+  var dbLabel = 'mongodb-2.4';
+  var env = JSON.parse(process.env.VCAP_SERVICES);
+  if (env[dbLabel]) {
+    mongo = env[dbLabel][0].credentials;
+  }
+} else {
+  mongo = {
+    db:       'db',
+    host:     'localhost',
+    password: 'pass',
+    port:     27017,
+    ssl:      false,
+    url:      'mongodb://localhost:27017/db',
+    username: 'admin',
+  };
+}
+
+var meConfigMongodbServer = process.env.ME_CONFIG_MONGODB_SERVER ? process.env.ME_CONFIG_MONGODB_SERVER.split(',') : false;
 
 module.exports = {
   mongodb: {
     //server: mongodb hostname or IP address
     //for replica set, use array of string instead
-    server: mongo.host,
-    port:   mongo.port,
+    server: (meConfigMongodbServer.length > 1 ? meConfigMongodbServer : meConfigMongodbServer[0]) || mongo.host,
+    port:   process.env.ME_CONFIG_MONGODB_PORT    || mongo.port,
 
     //ssl: connect to the server using secure SSL
-    ssl: mongo.ssl,
+    ssl: process.env.ME_CONFIG_MONGODB_SSL || mongo.ssl,
 
     //sslValidate: validate mongod server certificate against CA
-    sslValidate: false,
+    sslValidate: process.env.ME_CONFIG_MONGODB_SSLVALIDATE || true,
 
     //sslCA: array of valid CA certificates
     sslCA:  [],
@@ -41,17 +55,28 @@ module.exports = {
     //set admin to true if you want to turn on admin features
     //if admin is true, the auth list below will be ignored
     //if admin is true, you will need to enter an admin username/password below (if it is needed)
-    admin: true,
+    admin: process.env.ME_CONFIG_MONGODB_ENABLE_ADMIN ? process.env.ME_CONFIG_MONGODB_ENABLE_ADMIN.toLowerCase() === 'true' : false,
 
     // >>>>  If you are using regular accounts, fill out auth details in the section below
     // >>>>  If you have admin auth, leave this section empty and skip to the next section
+    auth: [
+      /*
+       * Add the name, username, and password of the databases you want to connect to
+       * Add as many databases as you want!
+       */
+      {
+        database: process.env.ME_CONFIG_MONGODB_AUTH_DATABASE || mongo.db,
+        username: process.env.ME_CONFIG_MONGODB_AUTH_USERNAME || mongo.username,
+        password: process.env.ME_CONFIG_MONGODB_AUTH_PASSWORD || mongo.password,
+      },
+    ],
 
     //  >>>>  If you are using an admin mongodb account, or no admin account exists, fill out section below
     //  >>>>  Using an admin account allows you to view and edit all databases, and view stats
 
     //leave username and password empty if no admin account exists
-    adminUsername: mongo.username,
-    adminPassword: mongo.password,
+    adminUsername: process.env.ME_CONFIG_MONGODB_ADMINUSERNAME || '',
+    adminPassword: process.env.ME_CONFIG_MONGODB_ADMINPASSWORD || '',
 
     //whitelist: hide all databases except the ones in this list  (empty list for no whitelist)
     whitelist: [],
@@ -62,21 +87,27 @@ module.exports = {
 
   site: {
     // baseUrl: the URL that mongo express will be located at - Remember to add the forward slash at the start and end!
-    baseUrl: '/',
+    baseUrl: process.env.ME_CONFIG_SITE_BASEURL || '/',
     cookieKeyName: 'mongo-express',
-    cookieSecret:     'cookiesecret',
-    host:             'localhost',
-    port:             8081,
-    requestSizeLimit: '50mb',
-    sessionSecret:    'sessionsecret',
-    sslCert:          '',
-    sslEnabled:       false,
-    sslKey:           '',
+    cookieSecret:     process.env.ME_CONFIG_SITE_COOKIESECRET   || 'cookiesecret',
+    host:             process.env.VCAP_APP_HOST                 || 'localhost',
+    port:             process.env.VCAP_APP_PORT                 || 8081,
+    requestSizeLimit: process.env.ME_CONFIG_REQUEST_SIZE        || '50mb',
+    sessionSecret:    process.env.ME_CONFIG_SITE_SESSIONSECRET  || 'sessionsecret',
+    sslCert:          process.env.ME_CONFIG_SITE_SSL_CRT_PATH   || '',
+    sslEnabled:       process.env.ME_CONFIG_SITE_SSL_ENABLED    || false,
+    sslKey:           process.env.ME_CONFIG_SITE_SSL_KEY_PATH   || '',
   },
 
   //set useBasicAuth to true if you want to authenticate mongo-express loggins
   //if admin is false, the basicAuthInfo list below will be ignored
   //this will be true unless ME_CONFIG_BASICAUTH_USERNAME is set and is the empty string
+  useBasicAuth: process.env.ME_CONFIG_BASICAUTH_USERNAME !== '',
+
+  basicAuth: {
+    username: process.env.ME_CONFIG_BASICAUTH_USERNAME || 'admin',
+    password: process.env.ME_CONFIG_BASICAUTH_PASSWORD || 'pass',
+  },
 
   options: {
     // Display startup text on console
@@ -87,7 +118,7 @@ module.exports = {
 
     //editorTheme: Name of the theme you want to use for displaying documents
     //See http://codemirror.net/demo/theme.html for all examples
-    editorTheme: 'rubyblue',
+    editorTheme: process.env.ME_CONFIG_OPTIONS_EDITORTHEME || 'rubyblue',
 
     // Maximum size of a single property & single row
     // Reduces the risk of sending a huge amount of data when viewing collections
