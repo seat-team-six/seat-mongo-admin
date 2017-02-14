@@ -5,13 +5,11 @@ var user = process.env.MONGO_USER;
 var host = process.env.MONGO_HOST || 'localhost';
 var port = process.env.MONGO_PORT || 27017;
 
-console.log(port);
-
 var mongo = {
     host:     host,
     password: pw,
     port:     port,
-    ssl:      true,
+    ssl:      false,
     username: user,
   };
 var url = require('url');
